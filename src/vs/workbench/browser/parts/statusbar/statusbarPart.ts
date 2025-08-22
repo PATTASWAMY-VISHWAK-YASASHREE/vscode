@@ -17,7 +17,7 @@ import { STATUS_BAR_BACKGROUND, STATUS_BAR_FOREGROUND, STATUS_BAR_NO_FOLDER_BACK
 import { IWorkspaceContextService, WorkbenchState } from '../../../../platform/workspace/common/workspace.js';
 import { contrastBorder, activeContrastBorder } from '../../../../platform/theme/common/colorRegistry.js';
 import { EventHelper, addDisposableListener, EventType, clearNode, getWindow, isHTMLElement, $ } from '../../../../base/browser/dom.js';
-import { createStyleSheet } from '../../../../base/browser/domStylesheets.js';
+import { createStyleSheet, IStyleElement } from '../../../../base/browser/domStylesheets.js';
 import { IStorageService } from '../../../../platform/storage/common/storage.js';
 import { Parts, IWorkbenchLayoutService } from '../../../services/layout/browser/layoutService.js';
 import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
@@ -129,7 +129,7 @@ class StatusbarPart extends Part implements IStatusbarEntryContainer {
 
 	//#endregion
 
-	private styleElement: HTMLStyleElement | undefined;
+	private styleElement: IStyleElement | undefined;
 
 	private pendingEntries: IPendingStatusbarEntry[] = [];
 
