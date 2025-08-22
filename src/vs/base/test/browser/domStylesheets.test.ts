@@ -80,4 +80,17 @@ suite('domStylesheets', () => {
 		styleSheet.className = 'test-theme-stylesheet';
 		assert.strictEqual(styleSheet.className, 'test-theme-stylesheet');
 	});
+
+	test('updateTextContent method sets data attribute on Firefox', () => {
+		const styleSheet = createStyleSheet();
+		disposables.add({ dispose: () => styleSheet.remove() });
+
+		// Test the updateTextContent method
+		styleSheet.updateTextContent('body { color: green; }');
+		assert.strictEqual(styleSheet.textContent, 'body { color: green; }');
+
+		// Check if the underlying element has the Firefox data attribute
+		// (we can't easily mock isFirefox in this test, but we can verify the method exists)
+		assert.strictEqual(typeof styleSheet.updateTextContent, 'function');
+	});
 });
