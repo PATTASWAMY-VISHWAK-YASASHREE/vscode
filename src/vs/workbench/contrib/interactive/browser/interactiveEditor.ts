@@ -86,7 +86,7 @@ export interface InteractiveEditorOptions extends ITextEditorOptions {
 
 export class InteractiveEditor extends EditorPane implements IEditorPaneWithScrolling {
 	private _rootElement!: HTMLElement;
-	private _styleElement!: HTMLStyleElement;
+	private _styleElement!: domStylesheets.IStyleElement;
 	private _notebookEditorContainer!: HTMLElement;
 	private _notebookWidget: IBorrowValue<NotebookEditorWidget> = { value: undefined };
 	private _inputCellContainer!: HTMLElement;

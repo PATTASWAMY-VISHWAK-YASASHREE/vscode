@@ -194,7 +194,7 @@ export class NotebookEditorWidget extends Disposable implements INotebookEditorD
 	private _notebookOverviewRulerContainer!: HTMLElement;
 	private _notebookOverviewRuler!: NotebookOverviewRuler;
 	private _body!: HTMLElement;
-	private _styleElement!: HTMLStyleElement;
+	private _styleElement!: domStylesheets.IStyleElement;
 	private _overflowContainer!: HTMLElement;
 	private _webview: BackLayerWebView<ICommonCellInfo> | null = null;
 	private _webviewResolvePromise: Promise<BackLayerWebView<ICommonCellInfo> | null> | null = null;

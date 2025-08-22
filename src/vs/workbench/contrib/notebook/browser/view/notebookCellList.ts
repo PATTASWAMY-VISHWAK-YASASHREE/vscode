@@ -93,7 +93,7 @@ export class NotebookCellList extends WorkbenchList<CellViewModel> implements ID
 	private _previousFocusedElements: readonly CellViewModel[] = [];
 	private readonly _localDisposableStore = new DisposableStore();
 	private readonly _viewModelStore = new DisposableStore();
-	private styleElement?: HTMLStyleElement;
+	private styleElement?: domStylesheetsJs.IStyleElement;
 	private _notebookCellAnchor: NotebookCellAnchor;
 
 	private readonly _onDidRemoveOutputs = this._localDisposableStore.add(new Emitter<readonly ICellOutputViewModel[]>());

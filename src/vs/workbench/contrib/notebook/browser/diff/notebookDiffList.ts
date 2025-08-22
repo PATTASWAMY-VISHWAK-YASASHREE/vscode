@@ -422,7 +422,7 @@ export class NotebookMouseController<T> extends MouseController<T> {
 }
 
 export class NotebookTextDiffList extends WorkbenchList<IDiffElementViewModelBase> implements IDisposable, IStyleController {
-	private styleElement?: HTMLStyleElement;
+	private styleElement?: domStylesheets.IStyleElement;
 
 	get rowsContainer(): HTMLElement {
 		return this.view.containerDomNode;
