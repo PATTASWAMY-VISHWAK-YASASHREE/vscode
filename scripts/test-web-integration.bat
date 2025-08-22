@@ -77,7 +77,7 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 
 echo.
 echo ### Configuration editing tests
-set CFWORKSPACE=%TEMPDIR%\git-%RANDOM%
+set CFWORKSPACE=%TEMPDIR%\cf-%RANDOM%
 mkdir %CFWORKSPACE%
 call node .\test\integration\browser\out\index.js --workspacePath=%CFWORKSPACE% --extensionDevelopmentPath=.\extensions\configuration-editing --extensionTestsPath=.\extensions\configuration-editing\out\test %*
 if %errorlevel% neq 0 exit /b %errorlevel%
