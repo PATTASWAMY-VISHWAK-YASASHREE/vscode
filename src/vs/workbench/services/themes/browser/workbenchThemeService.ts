@@ -42,6 +42,7 @@ import { getIconsStyleSheet } from '../../../../platform/theme/browser/iconsStyl
 import { asCssVariableName, getColorRegistry } from '../../../../platform/theme/common/colorRegistry.js';
 import { ILanguageService } from '../../../../editor/common/languages/language.js';
 import { mainWindow } from '../../../../base/browser/window.js';
+import { IAuxiliaryWindowService } from '../../auxiliaryWindow/browser/auxiliaryWindowService.js';
 
 // implementation
 
@@ -109,7 +110,8 @@ export class WorkbenchThemeService extends Disposable implements IWorkbenchTheme
 		@ILogService private readonly logService: ILogService,
 		@IHostColorSchemeService private readonly hostColorService: IHostColorSchemeService,
 		@IUserDataInitializationService private readonly userDataInitializationService: IUserDataInitializationService,
-		@ILanguageService private readonly languageService: ILanguageService
+		@ILanguageService private readonly languageService: ILanguageService,
+		@IAuxiliaryWindowService private readonly auxiliaryWindowService: IAuxiliaryWindowService
 	) {
 		super();
 		this.container = layoutService.mainContainer;
@@ -479,7 +481,7 @@ export class WorkbenchThemeService extends Disposable implements IWorkbenchTheme
 		}
 		ruleCollector.addRule(`.monaco-workbench { ${colorVariables.join('\n')} }`);
 
-		_applyRules([...cssRules].join('\n'), colorThemeRulesClassName);
+		_applyRules([...cssRules].join('\n'), colorThemeRulesClassName, this.auxiliaryWindowService);
 	}
 
 	private applyTheme(newTheme: ColorThemeData, settingsTarget: ThemeSettingTarget, silent = false): Promise<IWorkbenchColorTheme | null> {
@@ -638,7 +640,7 @@ export class WorkbenchThemeService extends Disposable implements IWorkbenchTheme
 	private applyAndSetFileIconTheme(iconThemeData: FileIconThemeData, silent = false): void {
 		this.currentFileIconTheme = iconThemeData;
 
-		_applyRules(iconThemeData.styleSheetContent!, fileIconThemeRulesClassName);
+		_applyRules(iconThemeData.styleSheetContent!, fileIconThemeRulesClassName, this.auxiliaryWindowService);
 
 		if (iconThemeData.id) {
 			this.container.classList.add(fileIconsEnabledClass);
@@ -745,7 +747,7 @@ export class WorkbenchThemeService extends Disposable implements IWorkbenchTheme
 
 		this.currentProductIconTheme = iconThemeData;
 
-		_applyRules(iconThemeData.styleSheetContent!, productIconThemeRulesClassName);
+		_applyRules(iconThemeData.styleSheetContent!, productIconThemeRulesClassName, this.auxiliaryWindowService);
 
 		this.productIconThemeWatcher.update(iconThemeData);
 
@@ -792,14 +794,33 @@ class ThemeFileWatcher {
 	}
 }
 
-function _applyRules(styleSheetContent: string, rulesClassName: string) {
-	const themeStyles = mainWindow.document.head.getElementsByClassName(rulesClassName);
-	if (themeStyles.length === 0) {
-		const elStyle = createStyleSheet();
-		elStyle.className = rulesClassName;
-		elStyle.textContent = styleSheetContent;
-	} else {
-		(<HTMLStyleElement>themeStyles[0]).textContent = styleSheetContent;
+function _applyRules(styleSheetContent: string, rulesClassName: string, auxiliaryWindowService?: IAuxiliaryWindowService) {
+	// Apply to main window
+	const applyToWindow = (targetWindow: Window & typeof globalThis) => {
+		const themeStyles = targetWindow.document.head.getElementsByClassName(rulesClassName);
+		if (themeStyles.length === 0) {
+			const elStyle = createStyleSheet(targetWindow.document.head);
+			elStyle.className = rulesClassName;
+			elStyle.textContent = styleSheetContent;
+		} else {
+			(<HTMLStyleElement>themeStyles[0]).textContent = styleSheetContent;
+		}
+	};
+
+	// Apply to main window
+	applyToWindow(mainWindow);
+
+	// Apply to all auxiliary windows if service is available
+	if (auxiliaryWindowService) {
+		const auxiliaryWindows = auxiliaryWindowService.getWindows();
+		for (const auxWindow of auxiliaryWindows) {
+			try {
+				applyToWindow(auxWindow.window);
+			} catch (error) {
+				// Ignore errors if auxiliary window is closed or invalid
+				console.warn('Failed to apply styles to auxiliary window:', error);
+			}
+		}
 	}
 }
 

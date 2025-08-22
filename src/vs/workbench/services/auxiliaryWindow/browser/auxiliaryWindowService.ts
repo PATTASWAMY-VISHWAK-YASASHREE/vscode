@@ -62,6 +62,8 @@ export interface IAuxiliaryWindowService {
 	open(options?: IAuxiliaryWindowOpenOptions): Promise<IAuxiliaryWindow>;
 
 	getWindow(windowId: number): IAuxiliaryWindow | undefined;
+	
+	getWindows(): ReadonlyArray<IAuxiliaryWindow>;
 }
 
 export interface BeforeAuxiliaryWindowUnloadEvent {
@@ -539,6 +541,10 @@ export class BrowserAuxiliaryWindowService extends Disposable implements IAuxili
 
 	getWindow(windowId: number): IAuxiliaryWindow | undefined {
 		return this.windows.get(windowId);
+	}
+
+	getWindows(): ReadonlyArray<IAuxiliaryWindow> {
+		return Array.from(this.windows.values());
 	}
 }
 

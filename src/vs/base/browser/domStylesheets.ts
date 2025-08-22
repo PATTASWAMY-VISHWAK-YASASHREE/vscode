@@ -97,7 +97,7 @@ function cloneGlobalStyleSheet(globalStylesheet: HTMLStyleElement, globalStylesh
 		clone.sheet?.insertRule(rule.cssText, clone.sheet?.cssRules.length);
 	}
 
-	disposables.add(sharedMutationObserver.observe(globalStylesheet, disposables, { childList: true })(() => {
+	disposables.add(sharedMutationObserver.observe(globalStylesheet, disposables, { childList: true, characterData: true, subtree: true })(() => {
 		clone.textContent = globalStylesheet.textContent;
 	}));
 
