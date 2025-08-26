@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import assert from 'assert';
-import { createStyleSheet } from '../../browser/domStylesheets.js';
+import { createStyleSheet, cloneGlobalStylesheets } from '../../browser/domStylesheets.js';
 import { mainWindow } from '../../browser/window.js';
 import { timeout } from '../../common/async.js';
 import { DisposableStore } from '../../common/lifecycle.js';
@@ -24,54 +24,48 @@ suite('domStylesheets', () => {
 
 	test('global stylesheet textContent changes should propagate to auxiliary windows', async () => {
 		// Create a mock auxiliary window without using window.open()
+		// Mock the auxiliary window with proper document structure
+		const mockDocument = {
+			head: document.createElement('head'),
+			createElement: (tagName: string) => document.createElement(tagName)
+		};
+		
 		const auxWindow = {
-			document: {
-				head: { 
-					appendChild: () => { }, 
-					querySelector: () => null,
-					children: [] as HTMLElement[]
-				},
-				createElement: (tag: string) => document.createElement(tag)
-			},
-			close: () => { /* mock close */ }
-		} as any;
+			document: mockDocument
+		} as Window;
 
 		const disposableStore = disposables.add(new DisposableStore());
 
 		try {
-			// Mock the auxiliary window head and appendChild
-			const clonedElements: HTMLStyleElement[] = [];
-			auxWindow.document.head.appendChild = (element: HTMLStyleElement) => {
-				clonedElements.push(element);
-				auxWindow.document.head.children.push(element);
-				return element;
-			};
-
-			// Create a global stylesheet
+			// Create a global stylesheet in the main window
 			const originalStyleSheet = createStyleSheet(mainWindow.document.head, undefined, disposableStore);
 			originalStyleSheet.textContent = 'body { color: red; }';
 
-			// Simulate auxiliary window creation and stylesheet cloning
-			// In real code, this happens in auxiliaryWindowService.applyCSS
-			const clonedStyleSheet = originalStyleSheet.cloneNode(true) as HTMLStyleElement;
-			auxWindow.document.head.appendChild(clonedStyleSheet);
+			// Test the cloning functionality directly using the cloneGlobalStylesheets function
+			// This simulates what happens when an auxiliary window is created
+			const cloneDisposable = disposables.add(cloneGlobalStylesheets(auxWindow));
 
-			assert.strictEqual(clonedStyleSheet.textContent, 'body { color: red; }');
+			// Check that the auxiliary window's head now has a cloned stylesheet
+			assert.strictEqual(auxWindow.document.head.children.length, 1, 'Auxiliary window should have one cloned stylesheet');
+			
+			const clonedStylesheet = auxWindow.document.head.children[0] as HTMLStyleElement;
+			assert.strictEqual(clonedStylesheet.textContent, 'body { color: red; }', 'Cloned stylesheet should have same content as original');
 
-			// Test that textContent changes propagate
+			// Test that textContent changes propagate through mutation observer
 			originalStyleSheet.textContent = 'body { color: blue; }';
-
+			
 			// Wait for mutation observer to trigger
-			await timeout(10);
+			await timeout(50);
+			
+			// Verify that the cloned stylesheet was updated
+			assert.strictEqual(clonedStylesheet.textContent, 'body { color: blue; }', 'Cloned stylesheet should be updated when original changes');
 
-			// In our fix, the cloned stylesheet should be updated automatically
-			// Note: This test verifies the concept, but the actual mutation observer
-			// logic would need to be mocked more thoroughly for a complete test
-			assert.strictEqual(originalStyleSheet.textContent, 'body { color: blue; }');
+			// Test updateTextContent method
+			originalStyleSheet.updateTextContent('body { color: green; }');
+			assert.strictEqual(originalStyleSheet.textContent, 'body { color: green; }');
 
 		} finally {
-			// Clean up mock auxiliary window
-			auxWindow.close();
+			// Cleanup is handled by disposableStore
 		}
 	});
 
