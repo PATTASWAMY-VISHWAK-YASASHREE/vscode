@@ -26,8 +26,8 @@ suite('domStylesheets', () => {
 		// Create a mock auxiliary window without using window.open()
 		const auxWindow = {
 			document: {
-				head: { 
-					appendChild: () => { }, 
+				head: {
+					appendChild: () => { },
 					querySelector: () => null,
 					children: [] as HTMLElement[]
 				},
