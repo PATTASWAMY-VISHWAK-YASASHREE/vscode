@@ -4,12 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import assert from 'assert';
-import { TestInstantiationService } from '../../../platform/instantiation/test/common/instantiationServiceMock.js';
 import { DisposableStore } from '../../../base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../base/test/common/utils.js';
 import { IAuxiliaryWindowService, IAuxiliaryWindow } from '../../services/auxiliaryWindow/browser/auxiliaryWindowService.js';
 import { CodeWindow, mainWindow } from '../../../base/browser/window.js';
-import { createStyleSheet } from '../../../base/browser/domStylesheets.js';
 
 suite('Auxiliary Window Theme Propagation', () => {
 
@@ -61,7 +59,6 @@ suite('Auxiliary Window Theme Propagation', () => {
 
 	test('theme CSS rules are applied to auxiliary windows', async () => {
 		const disposables = new DisposableStore();
-		const instantiationService = new TestInstantiationService();
 		const auxiliaryWindowService = new MockAuxiliaryWindowService();
 
 		try {

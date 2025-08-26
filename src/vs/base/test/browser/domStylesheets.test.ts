@@ -23,18 +23,18 @@ suite('domStylesheets', () => {
 	});
 
 	test('global stylesheet textContent changes should propagate to auxiliary windows', async () => {
-		// Create a mock auxiliary window
-		const auxWindow = Object.assign(window.open('', '', 'width=1,height=1'), {
+		// Create a mock auxiliary window without using window.open()
+		const auxWindow = {
 			document: {
-				head: { appendChild: () => { }, querySelector: () => null },
+				head: { 
+					appendChild: () => { }, 
+					querySelector: () => null,
+					children: [] as HTMLElement[]
+				},
 				createElement: (tag: string) => document.createElement(tag)
-			}
-		}) as any;
-
-		if (!auxWindow) {
-			// Skip test if popup is blocked
-			return;
-		}
+			},
+			close: () => { /* mock close */ }
+		} as any;
 
 		const disposableStore = disposables.add(new DisposableStore());
 
@@ -43,6 +43,7 @@ suite('domStylesheets', () => {
 			const clonedElements: HTMLStyleElement[] = [];
 			auxWindow.document.head.appendChild = (element: HTMLStyleElement) => {
 				clonedElements.push(element);
+				auxWindow.document.head.children.push(element);
 				return element;
 			};
 
@@ -69,6 +70,7 @@ suite('domStylesheets', () => {
 			assert.strictEqual(originalStyleSheet.textContent, 'body { color: blue; }');
 
 		} finally {
+			// Clean up mock auxiliary window
 			auxWindow.close();
 		}
 	});
