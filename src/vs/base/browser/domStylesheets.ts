@@ -7,11 +7,120 @@ import { DisposableStore, toDisposable, IDisposable } from '../common/lifecycle.
 import { autorun, IObservable } from '../common/observable.js';
 import { getWindows, sharedMutationObserver } from './dom.js';
 import { mainWindow } from './window.js';
+import { isFirefox } from './browser.js';
 
 const globalStylesheets = new Map<HTMLStyleElement /* main stylesheet */, Set<HTMLStyleElement /* aux window clones that track the main stylesheet */>>();
 
+/**
+ * Interface that mimics the essential HTMLStyleElement methods needed by the codebase
+ */
+export interface IStyleElement {
+	readonly type: string;
+	readonly media: string;
+	readonly parentElement: HTMLElement | null;
+	readonly sheet: CSSStyleSheet | null;
+	textContent: string | null;
+	id: string;
+	className: string;
+	remove(): void;
+	updateTextContent(content: string): void;
+	cloneNode(deep?: boolean): Node;
+	appendChild(newChild: Node): Node;
+	setAttribute(name: string, value: string): void;
+	getAttribute(name: string): string | null;
+}
+
 export function isGlobalStylesheet(node: Node): boolean {
 	return globalStylesheets.has(node as HTMLStyleElement);
+}
+
+/**
+ * Wrapper class that provides HTMLStyleElement-like interface
+ * with Firefox-specific text content update functionality
+ */
+class StyleElementWrapper implements IStyleElement {
+	private _element: HTMLStyleElement;
+
+	constructor(element: HTMLStyleElement) {
+		this._element = element;
+	}
+
+	get type(): string {
+		return this._element.type;
+	}
+
+	get media(): string {
+		return this._element.media;
+	}
+
+	get parentElement(): HTMLElement | null {
+		return this._element.parentElement;
+	}
+
+	get sheet(): CSSStyleSheet | null {
+		return this._element.sheet;
+	}
+
+	get textContent(): string | null {
+		return this._element.textContent;
+	}
+
+	set textContent(value: string | null) {
+		this._element.textContent = value;
+	}
+
+	get id(): string {
+		return this._element.id;
+	}
+
+	set id(value: string) {
+		this._element.id = value;
+	}
+
+	get className(): string {
+		return this._element.className;
+	}
+
+	set className(value: string) {
+		this._element.className = value;
+	}
+
+	remove(): void {
+		this._element.remove();
+	}
+
+	cloneNode(deep?: boolean): Node {
+		return this._element.cloneNode(deep);
+	}
+
+	appendChild(newChild: Node): Node {
+		return this._element.appendChild(newChild);
+	}
+
+	setAttribute(name: string, value: string): void {
+		this._element.setAttribute(name, value);
+	}
+
+	getAttribute(name: string): string | null {
+		return this._element.getAttribute(name);
+	}
+
+	/**
+	 * Updates text content with Firefox-specific handling.
+	 * Sets a data attribute and updates content specifically for Firefox.
+	 */
+	updateTextContent(content: string): void {
+		if (isFirefox) {
+			// Set a data attribute to mark this as Firefox-updated content
+			this._element.setAttribute('data-firefox-updated', 'true');
+		}
+		this._element.textContent = content;
+	}
+
+	// Expose the underlying element for cases where direct access is needed
+	getElement(): HTMLStyleElement {
+		return this._element;
+	}
 }
 
 /**
@@ -23,7 +132,7 @@ export function createStyleSheet2(): WrappedStyleElement {
 
 class WrappedStyleElement {
 	private _currentCssStyle = '';
-	private _styleSheet: HTMLStyleElement | undefined = undefined;
+	private _styleSheet: IStyleElement | undefined = undefined;
 
 	public setStyle(cssStyle: string): void {
 		if (cssStyle === this._currentCssStyle) {
@@ -46,7 +155,7 @@ class WrappedStyleElement {
 	}
 }
 
-export function createStyleSheet(container: HTMLElement = mainWindow.document.head, beforeAppend?: (style: HTMLStyleElement) => void, disposableStore?: DisposableStore): HTMLStyleElement {
+export function createStyleSheet(container: HTMLElement = mainWindow.document.head, beforeAppend?: (style: HTMLStyleElement) => void, disposableStore?: DisposableStore): IStyleElement {
 	const style = document.createElement('style');
 	style.type = 'text/css';
 	style.media = 'screen';
@@ -73,7 +182,7 @@ export function createStyleSheet(container: HTMLElement = mainWindow.document.he
 		}
 	}
 
-	return style;
+	return new StyleElementWrapper(style);
 }
 
 export function cloneGlobalStylesheets(targetWindow: Window): IDisposable {
@@ -107,8 +216,8 @@ function cloneGlobalStyleSheet(globalStylesheet: HTMLStyleElement, globalStylesh
 	return disposables;
 }
 
-let _sharedStyleSheet: HTMLStyleElement | null = null;
-function getSharedStyleSheet(): HTMLStyleElement {
+let _sharedStyleSheet: IStyleElement | null = null;
+function getSharedStyleSheet(): IStyleElement {
 	if (!_sharedStyleSheet) {
 		_sharedStyleSheet = createStyleSheet();
 	}
@@ -132,11 +241,13 @@ export function createCSSRule(selector: string, cssText: string, style = getShar
 		return;
 	}
 
-	style.sheet?.insertRule(`${selector} {${cssText}}`, 0);
+	// Get the underlying element for direct sheet access
+	const element = (style as StyleElementWrapper).getElement ? (style as StyleElementWrapper).getElement() : style as HTMLStyleElement;
+	element.sheet?.insertRule(`${selector} {${cssText}}`, 0);
 
 	// Apply rule also to all cloned global stylesheets
-	for (const clonedGlobalStylesheet of globalStylesheets.get(style) ?? []) {
-		createCSSRule(selector, cssText, clonedGlobalStylesheet);
+	for (const clonedGlobalStylesheet of globalStylesheets.get(element) ?? []) {
+		createCSSRule(selector, cssText, new StyleElementWrapper(clonedGlobalStylesheet));
 	}
 }
 
@@ -145,7 +256,9 @@ export function removeCSSRulesContainingSelector(ruleName: string, style = getSh
 		return;
 	}
 
-	const rules = getDynamicStyleSheetRules(style);
+	// Get the underlying element for direct sheet access
+	const element = (style as StyleElementWrapper).getElement ? (style as StyleElementWrapper).getElement() : style as HTMLStyleElement;
+	const rules = getDynamicStyleSheetRules(element);
 	const toDelete: number[] = [];
 	for (let i = 0; i < rules.length; i++) {
 		const rule = rules[i];
@@ -155,12 +268,12 @@ export function removeCSSRulesContainingSelector(ruleName: string, style = getSh
 	}
 
 	for (let i = toDelete.length - 1; i >= 0; i--) {
-		style.sheet?.deleteRule(toDelete[i]);
+		element.sheet?.deleteRule(toDelete[i]);
 	}
 
 	// Remove rules also from all cloned global stylesheets
-	for (const clonedGlobalStylesheet of globalStylesheets.get(style) ?? []) {
-		removeCSSRulesContainingSelector(ruleName, clonedGlobalStylesheet);
+	for (const clonedGlobalStylesheet of globalStylesheets.get(element) ?? []) {
+		removeCSSRulesContainingSelector(ruleName, new StyleElementWrapper(clonedGlobalStylesheet));
 	}
 }
 
